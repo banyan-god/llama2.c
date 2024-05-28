@@ -3,7 +3,7 @@ import struct
 import inspect
 from dataclasses import dataclass
 from typing import Any, Optional, Tuple
-
+import bitsandbytes as bnb
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -286,10 +286,10 @@ class Transformer(nn.Module):
         print(f"num decayed parameter tensors: {len(decay_params)}, with {num_decay_params:,} parameters")
         print(f"num non-decayed parameter tensors: {len(nodecay_params)}, with {num_nodecay_params:,} parameters")
         # Create AdamW optimizer and use the fused version if it is available
-        fused_available = 'fused' in inspect.signature(torch.optim.AdamW).parameters
+        fused_available = 'fused' in inspect.signature(bnb.optim.AdamW8bit).parameters
         use_fused = fused_available and device_type == 'cuda'
         extra_args = dict(fused=True) if use_fused else dict()
-        optimizer = torch.optim.AdamW(optim_groups, lr=learning_rate, betas=betas, **extra_args)
+        optimizer = bnb.optim.AdamW8bit(optim_groups, lr=learning_rate, betas=betas, **extra_args)
         print(f"using fused AdamW: {use_fused}")
 
         return optimizer
