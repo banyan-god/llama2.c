@@ -28,7 +28,7 @@ from model import Transformer, ModelArgs
 from torch.distributed import destroy_process_group, init_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from finewebllama2 import Task
+from finewebedullama2 import Task
 from export import model_export
 
 # -----------------------------------------------------------------------------
@@ -59,7 +59,7 @@ dropout = 0.1
 # adamw optimizer
 gradient_accumulation_steps = 8  # used to simulate larger batch sizes
 learning_rate = 5e-4  # max learning rate
-max_iters = 10000000  # total number of training iterations
+max_iters = 5000000  # total number of training iterations
 weight_decay = 1e-1
 beta1 = 0.9
 beta2 = 0.95
@@ -245,7 +245,7 @@ if wandb_log and master_process:
 
 # training loop
 batch_generator = iter_batches(split="train",start_index=0)
-X, Y =next(batch_generator) # fetch the very first batch
+# fetch the very first batch
 t0 = time.time()
 local_iter_num = 0  # number of iterations in the lifetime of this process
 raw_model = model.module if ddp else model  # unwrap DDP container if needed
@@ -293,6 +293,8 @@ try:
             print(torch.cuda.memory_reserved())
         if iter_num == 0 and eval_only:
             break
+        if iter_num == 0 :
+            X, Y =next(batch_generator) 
         try:
             # forward backward update, with optional gradient accumulation to simulate larger batch size
             # and using the GradScaler if data type is float16
@@ -308,6 +310,7 @@ try:
                     loss = raw_model.last_loss
                     loss = loss / gradient_accumulation_steps
                 # immediately async prefetch next batch while model is doing the forward pass on the GPU
+                del X, Y 
                 X, Y = next(batch_generator)
                 # backward pass, with gradient scaling if training in fp16
                 scaler.scale(loss).backward()

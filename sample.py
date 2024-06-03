@@ -16,7 +16,7 @@ import random
 
 # -----------------------------------------------------------------------------
 checkpoint = 'out/model_state_dict.safetensors'
-start = "You are an AI assistant that follows instruction extremely well. Help as much as you can. Given the question: This is a correct answer to the following question about North america. Yes or no? Answer: As of July 2008, its population was estimated at nearly 529 million people across 23 independent states , representing about 7.5% of the human population. Question: what is the population of north america The answer is:" # or "<|endoftext|>" or etc. Can also specify a file, use as: "FILE:prompt.txt"
+start = "Life and game of thrones" # or "<|endoftext|>" or etc. Can also specify a file, use as: "FILE:prompt.txt"
 num_samples = 1 # number of samples to draw
 max_new_tokens = 600 # number of tokens generated in each sample
 temperature = 1.5 # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, in predictions
@@ -78,7 +78,7 @@ else:
     # let's try to find the tokenizer model automatically. bit gross here...
     query_vocab_size = 0 if vocab_source == "llama2" else vocab_size
     tokenizer_model = get_tokenizer_model_path(vocab_size=query_vocab_size)
-enc = transformers.AutoTokenizer.from_pretrained("DWDMaiMai/tiktoken_cl100k_base")
+enc = transformers.AutoTokenizer.from_pretrained("KoboldAI/llama2-tokenizer")
 
 # encode the beginning of the prompt
 if start.startswith('FILE:'):
