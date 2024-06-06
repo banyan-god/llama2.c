@@ -1,8 +1,7 @@
 from datasets import load_dataset
 import torch
 import transformers 
-from torch.utils.data import DataLoader, DistributedSampler
-import torch.distributed as dist
+from torch.utils.data import DataLoader
 
 
 
@@ -12,40 +11,27 @@ class Task:
         self.block_size = block_size
         self.batch_size=batch_size
 
-        self.tokenizer = transformers.AutoTokenizer.from_pretrained("KoboldAI/llama2-tokenizer")
+        self.tokenizer = transformers.AutoTokenizer.from_pretrained("DWDMaiMai/tiktoken_cl100k_base")
         self.tokenizer.pad_token = self.tokenizer.eos_token
         vocab_size = self.tokenizer.vocab_size
-
-        if not dist.is_initialized():
-            dist.init_process_group(backend='nccl')  # Adjust as per your setup
-
-        self.rank = dist.get_rank()
-        self.world_size = dist.get_world_size()
-        
         self.initialized = False
-        self.initialize()
         
         
     def initialize(self):
-        dataset = load_dataset("HuggingFaceFW/fineweb-edu", name="sample-10BT", split="train", streaming=False,num_proc=16)
-        split_dataset = dataset.train_test_split(test_size=0.1)  # Split 10% for testing, 90% for training
-
-        # Access the training and validation datasets
-        train_dataset = split_dataset['train']
-        val_dataset = split_dataset['test']
+        dataset = load_dataset("HuggingFaceFW/fineweb", name="CC-MAIN-2024-10", split='train', streaming=False,num_proc=28)
+        iterable_dataset = dataset.to_iterable_dataset()
+        shuffled_dataset = iterable_dataset.shuffle(buffer_size=100000)
+          # Skip the first 1000 records for validation
+        val_dataset = shuffled_dataset.take(10000) 
+        train_dataset = shuffled_dataset.skip(10000)
         
         tokenized_datasets = train_dataset.map(self.tokenize_function, batched=True, remove_columns={'id','url','text','dump','date','file_path','language','language_score','token_count'})
         tokenized_val_datasets = val_dataset.map(self.tokenize_function, batched=True,remove_columns={'id','url','text','dump','date','file_path','language','language_score','token_count'})
-
-                # Create samplers for distributed training
-        train_sampler = DistributedSampler(tokenized_datasets, num_replicas=self.world_size, rank=self.rank, shuffle=True)
-        val_sampler = DistributedSampler(tokenized_val_datasets, num_replicas=self.world_size, rank=self.rank, shuffle=False)
-
         
         # tokenized_datasets = tokenized_datasets.with_format("torch")
         # tokenized_val_datasets=tokenized_val_datasets.with_format("torch")
-        self.train_loader = DataLoader(tokenized_datasets, batch_size=self.batch_size,  sampler=train_sampler, pin_memory=True)
-        self.val_loader = DataLoader(tokenized_val_datasets, batch_size=self.batch_size, sampler=val_sampler, pin_memory=True)
+        self.train_loader = DataLoader(tokenized_datasets, batch_size=self.batch_size,  pin_memory=True)
+        self.val_loader = DataLoader(tokenized_val_datasets, batch_size=self.batch_size, pin_memory=True)
         self.initialized = True
         
     def tokenize_function(self,examples):
