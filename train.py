@@ -35,7 +35,7 @@ from export import model_export
 # I/O
 out_dir = "out"
 eval_interval = 2000
-log_interval = 100
+log_interval = 200
 eval_iters = 100
 eval_only = False  # if True, script exits right after the first eval
 always_save_checkpoint = True  # if True, always save a checkpoint after each eval
@@ -50,15 +50,15 @@ max_seq_len = 1024
 vocab_source = "llama2" # llama2|custom; use Lllama 2 vocab from Meta, or custom trained
 vocab_size = 32000 # the Llama 2 tokenizer has 32K tokens
 # model
-dim = 970
-n_layers = 36
-n_heads = 36
-n_kv_heads = 36
+dim = 1024
+n_layers = 32
+n_heads = 32
+n_kv_heads = 32
 multiple_of = 32
 dropout = 0.1
 # adamw optimizer
-gradient_accumulation_steps = 8  # used to simulate larger batch sizes
-learning_rate = 5e-4  # max learning rate
+gradient_accumulation_steps = 64  # used to simulate larger batch sizes
+learning_rate = 10e-4  # max learning rate
 max_iters = 5000000  # total number of training iterations
 weight_decay = 1e-1
 beta1 = 0.9
@@ -310,7 +310,6 @@ try:
                     loss = raw_model.last_loss
                     loss = loss / gradient_accumulation_steps
                 # immediately async prefetch next batch while model is doing the forward pass on the GPU
-                del X, Y 
                 X, Y = next(batch_generator)
                 # backward pass, with gradient scaling if training in fp16
                 scaler.scale(loss).backward()
