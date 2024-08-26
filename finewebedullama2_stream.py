@@ -28,7 +28,7 @@ class Task:
         
         
     def initialize(self):
-        dataset = load_dataset("HuggingFaceFW/fineweb-edu", name="sample-350BT", split="train", streaming=False,num_proc=28)
+        dataset = load_dataset("HuggingFaceFW/fineweb-edu", name="sample-10BT", split="train", streaming=False,num_proc=28)
         iterable_dataset = dataset.to_iterable_dataset()
         shuffled_dataset = iterable_dataset.shuffle(buffer_size=100000,seed=42)
           # Skip the first 1000 records for validation
@@ -83,6 +83,7 @@ class Task:
                 continue 
     def process_batch(self, batch):
         X = batch['input_ids'].detach().to(self.device, non_blocking=True)
+        print(X.shape)
         Y = batch['labels'].detach().to(self.device, non_blocking=True)
         return X, Y
         

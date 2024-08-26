@@ -29,7 +29,7 @@ class Task:
         
         
     def initialize(self):
-
+        #dataset from finewebedullama2-preprocess 
         train_dataset = load_from_disk('/tmp/tokenized_datasets')
         val_dataset = load_from_disk('/tmp/tokenized_val_datasets')
         train_dataset = train_dataset.with_format("torch")
@@ -41,7 +41,7 @@ class Task:
         train_sampler = DistributedSampler(train_dataset, num_replicas=self.world_size, rank=self.rank, shuffle=True)
         val_sampler = DistributedSampler(val_dataset, num_replicas=self.world_size, rank=self.rank, shuffle=False)
 
-        self.train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=train_sampler, pin_memory=True)
+        self.train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=train_sampler, pin_memory=True )
         self.val_loader = DataLoader(val_dataset, batch_size=self.batch_size,sampler=val_sampler,  pin_memory=True)
         self.initialized = True
         
@@ -82,6 +82,51 @@ class Task:
         X = batch['input_ids'].detach().to(self.device, non_blocking=True)
         Y = batch['labels'].detach().to(self.device, non_blocking=True)
         return X, Y
+
+
+class TokenizedDataset(Dataset):
+    def __init__(self, data):
+        self.data = data
+        self.cumulative_sizes = self._cumulative_sizes()
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx]
+
+    def _cumulative_sizes(self):
+        # Calculate cumulative token sizes for efficient indexing
+        cumulative = [0]
+        for item in self.data:
+            cumulative.append(cumulative[-1] + len(item))
+        return cumulative
+
+    def get_batch_indices(self, batch_size):
+        # Generate batch indices based on cumulative token size
+        start = 0
+        for end in range(1, len(self.cumulative_sizes)):
+            if self.cumulative_sizes[end] - self.cumulative_sizes[start] >= batch_size or end == len(self.data):
+                yield list(range(start, end))
+                start = end
+def test_batch_block_size(print_every=10):
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    task = Task(batch_size=8, device=device, block_size=1024)
+    split = 'train'
+    batch_generator = task.iter_batches(split)
+    
+    for i, (X, Y) in enumerate(batch_generator):
+        assert X.shape[1] == 1024, f"X block size is {X.shape[1]} in batch {i}, expected 1024"
+        assert Y.shape[1] == 1024, f"Y block size is {Y.shape[1]} in batch {i}, expected 1024"
+        if i % print_every == 0:
+            print(f"\rBatch {i} passed: X and Y block sizes are 1024.", end="")
+    
+    # Final newline after loop completes
+    print("\nAll batches processed successfully.")
+
+
+
+
         
 if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -90,4 +135,5 @@ if __name__ == "__main__":
     batch_generator = task.iter_batches(split)
     X, Y = next(batch_generator)  # Get the first batch
     print(X.shape, Y.shape) 
+    test_batch_block_size()
 
