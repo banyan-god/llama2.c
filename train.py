@@ -293,8 +293,12 @@ try:
             print(torch.cuda.memory_reserved())
         if iter_num == 0 and eval_only:
             break
-        if X is None or Y is None:
+        try:
+            if X is None or Y is None or iter_num == 0:
+                X, Y = next(batch_generator)
+        except NameError:
             X, Y = next(batch_generator)
+
         try:
             # forward backward update, with optional gradient accumulation to simulate larger batch size
             # and using the GradScaler if data type is float16
