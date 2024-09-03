@@ -6,6 +6,37 @@ import torch.distributed as dist
 from datasets.distributed import split_dataset_by_node
 from datasets import load_from_disk
 
+def custom_collate_fn(batch, block_size, tokenize_fn, pad_token_id):
+    # Flatten the batch list to create a long list of sequences
+    batch = [item for sublist in batch for item in sublist['input_ids']]
+    
+    input_ids = []
+    labels = []
+    while len(batch) >= block_size + 1:  # +1 to account for both input and label
+        current_input_ids = torch.tensor(batch[:block_size + 1])
+        input_ids.append(current_input_ids[:-1])
+        labels.append(current_input_ids[1:])
+        
+        # Remove those tokens from the batch list
+        batch = batch[block_size:]
+    
+    # Drop any remaining tokens if they don't form a full block
+    if len(batch) < block_size + 1:
+        batch = []  # This effectively drops the last incomplete sequence
+
+    # Stack the inputs and labels
+    input_ids = torch.stack(input_ids)
+    labels = torch.stack(labels)
+    
+    # Create the dictionary format expected by tokenize_function
+    tokenized_output = {'input_ids': input_ids, 'labels': labels}
+    
+    # Pass the batch through the tokenize_function
+    tokenized_output = tokenize_fn(tokenized_output)
+    
+    return tokenized_output
+
+
 
 
 class Task:
@@ -41,8 +72,9 @@ class Task:
         train_sampler = DistributedSampler(train_dataset, num_replicas=self.world_size, rank=self.rank, shuffle=True)
         val_sampler = DistributedSampler(val_dataset, num_replicas=self.world_size, rank=self.rank, shuffle=False)
 
-        self.train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=train_sampler, pin_memory=True )
-        self.val_loader = DataLoader(val_dataset, batch_size=self.batch_size,sampler=val_sampler,  pin_memory=True)
+        self.train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=train_sampler, pin_memory=True ,     collate_fn=lambda batch: custom_collate_fn(batch, self.block_size, self.tokenize_function, self.tokenizer.pad_token_id))
+        self.val_loader = DataLoader(val_dataset, batch_size=self.batch_size,sampler=val_sampler,  pin_memory=True, 
+      collate_fn=lambda batch: custom_collate_fn(batch, self.block_size, self.tokenize_function, self.tokenizer.pad_token_id))
         self.initialized = True
         
     def tokenize_function(self,tokenized_output):
@@ -78,38 +110,14 @@ class Task:
                 print("Error processing batch:", e)
                 break 
     def process_batch(self, batch):
-        batch=self.tokenize_function(batch)
+        # batch=self.tokenize_function(batch)
         X = batch['input_ids'].detach().to(self.device, non_blocking=True)
         Y = batch['labels'].detach().to(self.device, non_blocking=True)
         return X, Y
 
 
-class TokenizedDataset(Dataset):
-    def __init__(self, data):
-        self.data = data
-        self.cumulative_sizes = self._cumulative_sizes()
 
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        return self.data[idx]
-
-    def _cumulative_sizes(self):
-        # Calculate cumulative token sizes for efficient indexing
-        cumulative = [0]
-        for item in self.data:
-            cumulative.append(cumulative[-1] + len(item))
-        return cumulative
-
-    def get_batch_indices(self, batch_size):
-        # Generate batch indices based on cumulative token size
-        start = 0
-        for end in range(1, len(self.cumulative_sizes)):
-            if self.cumulative_sizes[end] - self.cumulative_sizes[start] >= batch_size or end == len(self.data):
-                yield list(range(start, end))
-                start = end
-def test_batch_block_size(print_every=10):
+def test_batch_block_size(print_every=1):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     task = Task(batch_size=8, device=device, block_size=1024)
     split = 'train'

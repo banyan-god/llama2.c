@@ -162,7 +162,7 @@ elif init_from == "resume":
     print(f"Resuming training from {out_dir}")
     # resume training from a checkpoint.
     ckpt_path = os.path.join(out_dir, "ckpt.pt")
-    checkpoint = torch.load(ckpt_path, map_location=device)
+    checkpoint = torch.load(ckpt_path, map_location=device,weights_only=False)
     checkpoint_model_args = checkpoint["model_args"]
     # force these config attributes to be equal otherwise we can't even resume training
     # the rest of the attributes (e.g. dropout) can stay as desired from command line
@@ -184,7 +184,7 @@ elif init_from == "resume":
 model.to(device)
 
 # initialize a GradScaler. If enabled=False scaler is a no-op
-scaler = torch.cuda.amp.GradScaler(enabled=(dtype == "float16"))
+scaler = torch.amp.GradScaler('cuda',enabled=(dtype == "float16"))
 
 # optimizer
 optimizer = model.configure_optimizers(weight_decay, learning_rate, (beta1, beta2), device_type)
@@ -293,8 +293,8 @@ try:
             print(torch.cuda.memory_reserved())
         if iter_num == 0 and eval_only:
             break
-        if iter_num == 0 :
-            X, Y =next(batch_generator) 
+        if X is None or Y is None:
+            X, Y = next(batch_generator)
         try:
             # forward backward update, with optional gradient accumulation to simulate larger batch size
             # and using the GradScaler if data type is float16
