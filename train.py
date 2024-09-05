@@ -45,7 +45,7 @@ wandb_log = True  # disabled by default
 wandb_project = "llamac"
 wandb_run_name = "run" + datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 # data
-batch_size = 8  # if gradient_accumulation_steps > 1, this is the micro-batch size
+batch_size = 10  # if gradient_accumulation_steps > 1, this is the micro-batch size
 max_seq_len = 1024
 vocab_source = "llama2" # llama2|custom; use Lllama 2 vocab from Meta, or custom trained
 vocab_size = 32000 # the Llama 2 tokenizer has 32K tokens
@@ -241,7 +241,7 @@ def get_lr(it):
 # logging
 if wandb_log and master_process:
     import wandb
-    wandb.init(project=wandb_project, name=wandb_run_name, config=config)
+    wandb_logger=wandb.init(project=wandb_project, name=wandb_run_name, config=config)
 
 # training loop
 batch_generator = iter_batches(split="train",start_index=0)
@@ -263,7 +263,7 @@ try:
             print(f"step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
             if wandb_log:
                 try:
-                    wandb.log(
+                    wandb_logger.log(
                         {
                             "iter": iter_num,
                             "tokens": iter_num * tokens_per_iter,
