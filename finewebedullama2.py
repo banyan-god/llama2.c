@@ -61,8 +61,8 @@ class Task:
         
     def initialize(self):
         #dataset from finewebedullama2-preprocess 
-        train_dataset = load_from_disk('/tmp/tokenized_datasets')
-        val_dataset = load_from_disk('/tmp/tokenized_val_datasets')
+        train_dataset = load_from_disk('/workspace/data/tokenized_datasets')
+        val_dataset = load_from_disk('/workspace/data/tokenized_val_datasets')
         train_dataset = train_dataset.with_format("torch")
         val_dataset = val_dataset.with_format("torch")
 
@@ -72,8 +72,8 @@ class Task:
         train_sampler = DistributedSampler(train_dataset, num_replicas=self.world_size, rank=self.rank, shuffle=True)
         val_sampler = DistributedSampler(val_dataset, num_replicas=self.world_size, rank=self.rank, shuffle=False)
 
-        self.train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=train_sampler, pin_memory=True ,     collate_fn=lambda batch: custom_collate_fn(batch, self.block_size, self.tokenize_function, self.tokenizer.pad_token_id))
-        self.val_loader = DataLoader(val_dataset, batch_size=self.batch_size,sampler=val_sampler,  pin_memory=True, 
+        self.train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=train_sampler, num_workers=8,prefetch_factor=8, persistent_workers=True, pin_memory=True ,     collate_fn=lambda batch: custom_collate_fn(batch, self.block_size, self.tokenize_function, self.tokenizer.pad_token_id))
+        self.val_loader = DataLoader(val_dataset, batch_size=self.batch_size,sampler=val_sampler, num_workers=8,prefetch_factor=8, persistent_workers=True,  pin_memory=True, 
       collate_fn=lambda batch: custom_collate_fn(batch, self.block_size, self.tokenize_function, self.tokenizer.pad_token_id))
         self.initialized = True
         
