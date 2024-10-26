@@ -16,7 +16,7 @@ import random
 
 # -----------------------------------------------------------------------------
 checkpoint = 'out/model_state_dict.safetensors'
-start = "What is life and what is science ?" # or "<|endoftext|>" or etc. Can also specify a file, use as: "FILE:prompt.txt"
+start = "Lets talk about AI" # or "<|endoftext|>" or etc. Can also specify a file, use as: "FILE:prompt.txt"
 num_samples = 1 # number of samples to draw
 max_new_tokens = 600 # number of tokens generated in each sample
 temperature = 1.5 # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, in predictions

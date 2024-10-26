@@ -1,0 +1,53 @@
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore Python bytecode files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore virtual environments
+venv/
+env/
+ENV/
+.venv/
+.pyenv/
+
+# Ignore Jupyter Notebook's metadata
+*.ipynb_metadata
+
+# Ignore output files
+*.h5
+*.hdf5
+*.csv
+*.json
+*.log
+*.pkl
+*.db
+*.sqlite
+*.arrow
+
+# Ignore any custom data or large files
+data/
+*.zip
+*.tar
+*.gz
+
+#wandb
+wandb/
+
+#models
+*.pt
+*.pth
+
+# Ignore system files
+.DS_Store
+*.bak
+*.swp
+
+# Ignore VSCode settings if using it
+.vscode/
+
+out/
+
+Llama-2-7b/
